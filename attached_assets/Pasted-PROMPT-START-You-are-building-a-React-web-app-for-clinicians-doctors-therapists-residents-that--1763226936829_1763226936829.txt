@@ -1,0 +1,155 @@
+PROMPT START
+
+You are building a React web app for clinicians (doctors, therapists, residents) that assists with note-taking and learning. The app will:
+	1.	Capture patient encounter summaries via voice or text
+	2.	Convert audio → text using ElevenLabs Speech-to-Text (handled by another teammate)
+	3.	Convert transcript → SOAP note draft using Azure OpenAI (API call placeholder in MVP)
+	4.	Require the clinician to enter their own diagnosis + plan before revealing the AI note (Recall Checkpoint)
+	5.	Show a Side-by-Side Compare
+	6.	Generate flashcards for spaced repetition review
+	7.	Store everything locally only (LocalStorage/IndexedDB) — no HIPAA compliance required for MVP.
+
+This app is intended only for mock/demo cases with no PHI.
+
+⸻
+
+🧩 Architecture Constraints
+
+🔹 ElevenLabs STT integration is handled separately — in this codebase, call a placeholder function:
+
+async function transcribeWithElevenLabs(audioBlob: Blob): Promise<string>;
+
+🔹 SOAP drafting uses Azure OpenAI — also placeholder:
+
+async function generateSOAPwithAzure(transcript: string): Promise<string>;
+
+You should include these function signatures and simulate a mocked response for UI testing.
+
+⸻
+
+🧑‍⚕️ User Profile
+
+Primary users:
+	•	Healthcare providers (MD, DO, PA, NP, RN, PT/OT, Psych, etc.)
+	•	Residents & medical students
+
+They value speed, clarity, and cognitive simplicity.
+
+⸻
+
+📄 Required Screens/Pages
+
+1️⃣ Home Dashboard
+
+Quick actions:
+	•	Start Voice Encounter
+	•	Start Text Encounter
+	•	Review Past Cases
+	•	Study Flashcards
+
+2️⃣ Encounter Capture (Voice/Text)
+
+Elements:
+	•	Mic button w/ waveform animation (placeholder allowed)
+	•	OR text input area
+	•	After recording: call transcribeWithElevenLabs
+	•	Button: Generate Draft SOAP Note
+
+3️⃣ Recall Checkpoint Screen
+
+Prompt:
+
+Before seeing the AI note, enter the Diagnosis and Treatment Plan you believe are correct.
+
+Textareas:
+	•	Diagnosis
+	•	Treatment Plan
+Button: Reveal AI Draft SOAP
+
+4️⃣ Compare View (Side-by-Side)
+
+Clinician Recall	AI Draft SOAP
+Highlight missing pieces (simple diff is fine)	
+
+Button: Generate Flashcards
+
+5️⃣ Flashcards Study Screen
+	•	Flip card UI (Question → Answer reveal)
+	•	Buttons: Again / Good / Easy
+	•	Local SRS scheduling
+
+6️⃣ Past Cases Library
+	•	List all saved case notes
+	•	View details + regenerate flashcards
+
+⸻
+
+🧠 Data Models
+
+type CaseNote = {
+  id: string;
+  transcript: string;
+  aiDraft: string;
+  clinicianDiagnosis: string;
+  clinicianPlan: string;
+  createdAt: number;
+};
+
+type Flashcard = {
+  id: string;
+  question: string;
+  answer: string;
+  nextReview: number;
+  interval: number;
+};
+
+
+⸻
+
+🧪 Placeholder Logic
+
+Simulate output for testing:
+
+// Example mock return:
+return "SOAP Note:\nS: Patient reports...\nO: Vitals...\nA: Likely...\nP: Start..."
+
+
+⸻
+
+🖥 Tech Stack Requirements
+
+Component	Technology
+Framework	React (Next.js or Vite — choose one)
+Styling	TailwindCSS
+State	Zustand or Jotai
+Local DB	IndexedDB (Dexie) or LocalStorage
+Audio recording	MediaRecorder API
+
+
+⸻
+
+🎨 UI Tone (very important)
+
+Clean, calm medical aesthetic — inspired by:
+
+Notion × Calm × Mayo Clinic
+
+Design rules:
+	•	Soft neutral background
+	•	Medical blue/green accents
+	•	Rounded cards, subtle depth
+	•	Large, readable typography
+	•	Minimal cognitive load
+
+⸻
+
+✔ Deliverables
+
+Generate a complete working UI with:
+	•	All pages + navigation wired
+	•	Local data persistence
+	•	Placeholder functions for ElevenLabs & Azure OpenAI
+	•	Responsive design, mobile and desktop ready
+	•	Fake sample case data included
+
+PROMPT END
