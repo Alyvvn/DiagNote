@@ -161,7 +161,7 @@ export default function Compare() {
               <div>
                 <h3 className="text-sm font-semibold text-foreground mb-2">Diagnosis</h3>
                 <div className="p-4 rounded-lg bg-muted/50 border border-border">
-                  <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap" data-testid="text-your-diagnosis">
+                  <p className="text-sm text-foreground leading-relaxed" data-testid="text-your-diagnosis">
                     {clinicianDiagnosis}
                   </p>
                 </div>
@@ -169,7 +169,7 @@ export default function Compare() {
               <div>
                 <h3 className="text-sm font-semibold text-foreground mb-2">Treatment Plan</h3>
                 <div className="p-4 rounded-lg bg-muted/50 border border-border">
-                  <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap" data-testid="text-your-plan">
+                  <p className="text-sm text-foreground leading-relaxed" data-testid="text-your-plan">
                     {clinicianPlan}
                   </p>
                 </div>
