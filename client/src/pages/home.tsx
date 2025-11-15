@@ -26,52 +26,53 @@ export default function Home() {
   });
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
+    <div className="min-h-screen">
+      <header className="glass border-b border-white/10 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-md bg-primary/10 flex items-center justify-center">
-              <Activity className="h-5 w-5 text-primary" />
+            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-chart-2 flex items-center justify-center primary-glow">
+              <Activity className="h-5 w-5 text-white" strokeWidth={2.5} />
             </div>
             <div>
-              <h1 className="text-lg font-semibold text-foreground">Clinical Notes</h1>
-              <p className="text-xs text-muted-foreground">AI-Powered Learning</p>
+              <h1 className="text-lg font-bold text-gradient">DiagNote</h1>
+              <p className="text-[10px] text-muted-foreground tracking-wide uppercase">AI Clinical Intelligence</p>
             </div>
           </div>
           <ThemeToggle />
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="text-center mb-12">
-          <Badge variant="secondary" className="mb-4" data-testid="badge-status">
-            Demo Mode • No PHI
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div className="text-center mb-16">
+          <Badge variant="secondary" className="mb-6 glass border-white/20 shadow-lg" data-testid="badge-status">
+            ✨ Demo Mode • No PHI
           </Badge>
-          <h2 className="text-4xl font-semibold text-foreground mb-3 tracking-tight">
-            Transform Encounters into Learning
+          <h2 className="text-5xl font-bold text-foreground mb-4 tracking-tight">
+            Transform Encounters into
+            <span className="text-gradient"> Learning</span>
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
             Capture patient encounters, generate SOAP notes with AI assistance, and strengthen clinical reasoning through active recall and spaced repetition.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
           <Link href="/encounter/voice">
-            <Card className="hover-elevate active-elevate-2 cursor-pointer transition-all h-full" data-testid="card-voice-encounter">
+            <Card className="glass hover-elevate active-elevate-2 cursor-pointer transition-all duration-300 h-full border-white/20 shadow-xl hover:shadow-2xl" data-testid="card-voice-encounter">
               <CardHeader className="pb-4">
                 <div className="flex items-center justify-between">
-                  <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Mic className="h-6 w-6 text-primary" />
+                  <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-primary to-chart-2 flex items-center justify-center primary-glow">
+                    <Mic className="h-7 w-7 text-white" strokeWidth={2} />
                   </div>
-                  <Badge variant="outline">Quick</Badge>
+                  <Badge variant="outline" className="border-primary/30 text-primary font-semibold">Quick</Badge>
                 </div>
-                <CardTitle className="text-xl mt-4">Voice Encounter</CardTitle>
-                <CardDescription className="leading-relaxed">
+                <CardTitle className="text-2xl mt-6 font-bold">Voice Encounter</CardTitle>
+                <CardDescription className="leading-relaxed text-base mt-2">
                   Record patient encounter with voice. AI transcribes and generates structured SOAP notes.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Button className="w-full" data-testid="button-start-voice">
+                <Button className="w-full shadow-lg primary-glow" size="lg" data-testid="button-start-voice">
                   Start Recording
                 </Button>
               </CardContent>
@@ -79,21 +80,21 @@ export default function Home() {
           </Link>
 
           <Link href="/encounter/text">
-            <Card className="hover-elevate active-elevate-2 cursor-pointer transition-all h-full" data-testid="card-text-encounter">
+            <Card className="glass hover-elevate active-elevate-2 cursor-pointer transition-all duration-300 h-full border-white/20 shadow-xl hover:shadow-2xl" data-testid="card-text-encounter">
               <CardHeader className="pb-4">
                 <div className="flex items-center justify-between">
-                  <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <FileText className="h-6 w-6 text-primary" />
+                  <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-chart-2 to-primary flex items-center justify-center accent-glow">
+                    <FileText className="h-7 w-7 text-white" strokeWidth={2} />
                   </div>
-                  <Badge variant="outline">Detailed</Badge>
+                  <Badge variant="outline" className="border-chart-2/30 text-chart-2 font-semibold">Detailed</Badge>
                 </div>
-                <CardTitle className="text-xl mt-4">Text Encounter</CardTitle>
-                <CardDescription className="leading-relaxed">
+                <CardTitle className="text-2xl mt-6 font-bold">Text Encounter</CardTitle>
+                <CardDescription className="leading-relaxed text-base mt-2">
                   Type or paste encounter notes. Perfect for detailed documentation or existing notes.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Button variant="outline" className="w-full" data-testid="button-start-text">
+                <Button variant="outline" className="w-full shadow-lg border-2" size="lg" data-testid="button-start-text">
                   Start Typing
                 </Button>
               </CardContent>
@@ -102,75 +103,87 @@ export default function Home() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="hover-elevate" data-testid="card-stat-cases">
+          <Card className="glass hover-elevate border-white/20 shadow-lg" data-testid="card-stat-cases">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Total Cases</CardTitle>
-                <FolderOpen className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Total Cases</CardTitle>
+                <FolderOpen className="h-5 w-5 text-primary" />
               </div>
             </CardHeader>
             <CardContent>
               {isLoadingCases ? (
-                <div className="h-10 w-20 bg-muted animate-pulse rounded" />
+                <div className="h-10 w-20 bg-muted animate-pulse rounded-lg" />
               ) : (
-                <p className="text-3xl font-semibold text-foreground" data-testid="text-total-cases">{totalCases}</p>
+                <p className="text-4xl font-bold text-gradient mb-1" data-testid="text-total-cases">{totalCases}</p>
               )}
               <Link href="/cases">
-                <Button variant="link" className="px-0 h-auto mt-2 text-sm" data-testid="link-view-all-cases">
+                <Button variant="link" className="px-0 h-auto mt-2 text-sm font-semibold text-primary" data-testid="link-view-all-cases">
                   View all cases →
                 </Button>
               </Link>
             </CardContent>
           </Card>
 
-          <Card className="hover-elevate" data-testid="card-stat-flashcards">
+          <Card className="glass hover-elevate border-white/20 shadow-lg" data-testid="card-stat-flashcards">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Due for Review</CardTitle>
-                <Clock className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Due for Review</CardTitle>
+                <Clock className="h-5 w-5 text-chart-2" />
               </div>
             </CardHeader>
             <CardContent>
               {isLoadingFlashcards ? (
-                <div className="h-10 w-20 bg-muted animate-pulse rounded" />
+                <div className="h-10 w-20 bg-muted animate-pulse rounded-lg" />
               ) : (
-                <p className="text-3xl font-semibold text-foreground" data-testid="text-due-flashcards">{dueFlashcards}</p>
+                <p className="text-4xl font-bold text-gradient mb-1" data-testid="text-due-flashcards">{dueFlashcards}</p>
               )}
               <Link href="/flashcards">
-                <Button variant="link" className="px-0 h-auto mt-2 text-sm" data-testid="link-study-flashcards">
+                <Button variant="link" className="px-0 h-auto mt-2 text-sm font-semibold text-chart-2" data-testid="link-study-flashcards">
                   Study now →
                 </Button>
               </Link>
             </CardContent>
           </Card>
 
-          <Card className="hover-elevate" data-testid="card-learning">
+          <Card className="glass hover-elevate border-white/20 shadow-lg" data-testid="card-learning">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Active Learning</CardTitle>
-                <Brain className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Active Learning</CardTitle>
+                <Brain className="h-5 w-5 text-accent-foreground" />
               </div>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-foreground leading-relaxed">
+              <p className="text-sm text-foreground leading-relaxed font-medium">
                 Strengthen clinical reasoning through recall checkpoints and spaced repetition
               </p>
             </CardContent>
           </Card>
         </div>
 
-        <div className="mt-12 p-6 rounded-lg bg-accent/50 border border-accent-foreground/10">
-          <div className="flex items-start gap-4">
-            <div className="h-10 w-10 rounded-lg bg-accent flex items-center justify-center flex-shrink-0">
-              <Activity className="h-5 w-5 text-accent-foreground" />
+        <div className="mt-16 glass p-8 rounded-2xl border-white/20 shadow-xl">
+          <div className="flex items-start gap-6">
+            <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-primary to-chart-2 flex items-center justify-center flex-shrink-0 primary-glow">
+              <Activity className="h-6 w-6 text-white" strokeWidth={2.5} />
             </div>
-            <div>
-              <h3 className="font-semibold text-foreground mb-2">How It Works</h3>
-              <ol className="text-sm text-muted-foreground space-y-2 leading-relaxed">
-                <li><span className="font-medium text-foreground">1. Capture</span> – Record or type patient encounter details</li>
-                <li><span className="font-medium text-foreground">2. Recall</span> – Enter your diagnosis and plan before seeing AI suggestions</li>
-                <li><span className="font-medium text-foreground">3. Compare</span> – Review AI-generated SOAP note alongside your assessment</li>
-                <li><span className="font-medium text-foreground">4. Learn</span> – Generate flashcards and reinforce knowledge with spaced repetition</li>
+            <div className="flex-1">
+              <h3 className="text-2xl font-bold text-foreground mb-4">How It Works</h3>
+              <ol className="text-base text-muted-foreground space-y-3 leading-relaxed">
+                <li className="flex items-start gap-3">
+                  <span className="font-bold text-primary text-lg">1.</span>
+                  <div><span className="font-semibold text-foreground">Capture</span> – Record or type patient encounter details</div>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="font-bold text-primary text-lg">2.</span>
+                  <div><span className="font-semibold text-foreground">Recall</span> – Enter your diagnosis and plan before seeing AI suggestions</div>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="font-bold text-primary text-lg">3.</span>
+                  <div><span className="font-semibold text-foreground">Compare</span> – Review AI-generated SOAP note alongside your assessment</div>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="font-bold text-primary text-lg">4.</span>
+                  <div><span className="font-semibold text-foreground">Learn</span> – Generate flashcards and reinforce knowledge with spaced repetition</div>
+                </li>
               </ol>
             </div>
           </div>

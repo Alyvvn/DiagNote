@@ -84,8 +84,8 @@ export default function Cases() {
 
   if (selectedCase) {
     return (
-      <div className="min-h-screen bg-background">
-        <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
+      <div className="min-h-screen">
+        <header className="glass border-b border-white/10 sticky top-0 z-50">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <Button
               variant="ghost"
@@ -186,15 +186,15 @@ export default function Cases() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
+    <div className="min-h-screen">
+      <header className="glass border-b border-white/10 sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setLocation('/')}
             data-testid="button-back"
-            className="hover-elevate"
+            className="hover-elevate hover:bg-primary/10"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Home
@@ -204,9 +204,11 @@ export default function Cases() {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="mb-8">
-          <h1 className="text-3xl font-semibold text-foreground mb-3">Past Cases</h1>
-          <p className="text-muted-foreground leading-relaxed">
+        <div className="mb-10">
+          <h1 className="text-4xl font-bold text-foreground mb-3">
+            Past <span className="text-gradient">Cases</span>
+          </h1>
+          <p className="text-muted-foreground leading-relaxed text-lg">
             Review your previous patient encounters and clinical assessments
           </p>
         </div>

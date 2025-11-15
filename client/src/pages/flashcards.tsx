@@ -88,8 +88,8 @@ export default function Flashcards() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
+      <div className="min-h-screen">
+        <header className="glass border-b border-white/10 sticky top-0 z-50">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <Button variant="ghost" size="sm" disabled>
               <ArrowLeft className="h-4 w-4 mr-2" />
@@ -113,15 +113,15 @@ export default function Flashcards() {
 
   if (dueCards.length === 0 || studyComplete) {
     return (
-      <div className="min-h-screen bg-background">
-        <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
+      <div className="min-h-screen">
+        <header className="glass border-b border-white/10 sticky top-0 z-50">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setLocation('/')}
               data-testid="button-back"
-              className="hover-elevate"
+              className="hover-elevate hover:bg-primary/10"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Home
@@ -162,21 +162,21 @@ export default function Flashcards() {
   const progress = ((currentIndex + 1) / dueCards.length) * 100;
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
+    <div className="min-h-screen">
+      <header className="glass border-b border-white/10 sticky top-0 z-50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setLocation('/')}
             data-testid="button-back"
-            className="hover-elevate"
+            className="hover-elevate hover:bg-primary/10"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
           <div className="flex items-center gap-3">
-            <Badge variant="secondary" data-testid="badge-progress">
+            <Badge variant="secondary" className="glass border-white/20 font-semibold" data-testid="badge-progress">
               {currentIndex + 1} of {dueCards.length}
             </Badge>
             <ThemeToggle />
