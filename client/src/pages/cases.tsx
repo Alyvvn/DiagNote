@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { db, type CaseNote } from "@/lib/db";
+import { generateFlashcardsFromCase } from "@/lib/ai-services";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -30,6 +31,7 @@ export default function Cases() {
   const [caseToDelete, setCaseToDelete] = useState<number | null>(null);
   const [isPlayingTTS, setIsPlayingTTS] = useState<number | null>(null); // Track which case is playing
   const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
+  const [isGeneratingForCase, setIsGeneratingForCase] = useState(false);
   const { toast } = useToast();
 
   const { data: cases = [], isLoading } = useQuery<CaseNote[]>({
@@ -166,6 +168,83 @@ export default function Cases() {
     }
   };
 
+  const generateFlashcardsForCase = async (caseNote: CaseNote) => {
+    if (!caseNote) return;
+    try {
+      setIsGeneratingForCase(true);
+
+      const aiCards = await generateFlashcardsFromCase(
+        caseNote.transcript,
+        caseNote.aiDraft,
+        caseNote.clinicianDiagnosis,
+        caseNote.clinicianPlan
+      );
+
+      if (!Array.isArray(aiCards) || aiCards.length === 0) {
+        toast({
+          title: "No Flashcards Generated",
+          description: "The AI did not return flashcards for this case.",
+        });
+        return;
+      }
+
+      const existing = await db.flashcards.where('caseNoteId').equals(caseNote.id!).toArray();
+      const existingQs = new Set(existing.map(c => (typeof c.question === 'string' ? c.question.trim() : String(c.question))));
+
+      const uniqueNew = [] as Array<{ question: string; answer: string }>;
+      const seen = new Set<string>();
+      for (const c of aiCards) {
+        const q = String(c.question).trim();
+        if (!q || existingQs.has(q) || seen.has(q)) continue;
+        seen.add(q);
+        uniqueNew.push({ question: q, answer: String(c.answer).trim() });
+      }
+
+      if (uniqueNew.length === 0) {
+        toast({
+          title: "No New Cards",
+          description: "All generated questions already exist for this case.",
+        });
+        return;
+      }
+
+      await db.flashcards.bulkAdd(
+        uniqueNew.map(c => ({
+          caseNoteId: caseNote.id!,
+          question: c.question,
+          answer: c.answer,
+          nextReview: Date.now(),
+          interval: 1,
+          easeFactor: 2.5,
+        }))
+      );
+
+      queryClient.invalidateQueries({ queryKey: ['/api/flashcards/due-list'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/flashcards/due-count'] });
+
+      toast({
+        title: "Flashcards Added",
+        description: `Added ${uniqueNew.length} new flashcard${uniqueNew.length !== 1 ? 's' : ''} for this case.`,
+      });
+    } catch (error: any) {
+      const code = error?.code;
+      let title = "Error";
+      let description = error?.message || "Failed to generate flashcards. Please try again.";
+      if (code === 'CONFIG') {
+        title = 'Configuration Required';
+        description = 'Set GOOGLE_API_KEY on the server or enable USE_MOCK_AI=1.';
+      } else if (code === 'RATE_LIMIT') {
+        title = 'Rate Limit Exceeded';
+        description = 'Too many requests. Please wait and try again.';
+      } else if (code === 'UPSTREAM') {
+        title = 'AI Service Error';
+      }
+      toast({ title, description, variant: 'destructive' });
+    } finally {
+      setIsGeneratingForCase(false);
+    }
+  };
+
   if (selectedCase) {
     return (
       <div className="min-h-screen">
@@ -182,6 +261,16 @@ export default function Cases() {
               Back to Cases
             </Button>
             <div className="flex items-center gap-2">
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => generateFlashcardsForCase(selectedCase)}
+                disabled={isGeneratingForCase}
+                data-testid="button-generate-flashcards-for-case"
+              >
+                <Sparkles className="h-4 w-4 mr-2" />
+                {isGeneratingForCase ? 'Generating...' : 'Generate Flashcards'}
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
@@ -255,25 +344,37 @@ export default function Cases() {
                     <Sparkles className="h-5 w-5 text-primary" />
                     AI-Generated SOAP Note
                   </CardTitle>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => playAIDraft(selectedCase)}
-                    disabled={!selectedCase.aiDraft}
-                    className="flex items-center gap-2"
-                  >
-                    {isPlayingTTS === selectedCase.id ? (
-                      <>
-                        <Square className="h-4 w-4" />
-                        Stop
-                      </>
-                    ) : (
-                      <>
-                        <Play className="h-4 w-4" />
-                        Play AI Draft
-                      </>
-                    )}
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => playAIDraft(selectedCase)}
+                      disabled={!selectedCase.aiDraft}
+                      className="flex items-center gap-2"
+                    >
+                      {isPlayingTTS === selectedCase.id ? (
+                        <>
+                          <Square className="h-4 w-4" />
+                          Stop
+                        </>
+                      ) : (
+                        <>
+                          <Play className="h-4 w-4" />
+                          Play AI Draft
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => generateFlashcardsForCase(selectedCase)}
+                      disabled={isGeneratingForCase}
+                      className="flex items-center gap-2"
+                    >
+                      <Sparkles className="h-4 w-4" />
+                      {isGeneratingForCase ? 'Generating...' : 'Generate Flashcards'}
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
