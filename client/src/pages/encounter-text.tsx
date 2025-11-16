@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, Play, Square } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { generateSOAPwithAzure } from "@/lib/ai-services";
+import { generateSOAPwithAzure, speakWithElevenLabs } from "@/lib/ai-services";
 import { useToast } from "@/hooks/use-toast";
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -13,7 +13,59 @@ export default function EncounterText() {
   const [, setLocation] = useLocation();
   const [textInput, setTextInput] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isPlayingTTS, setIsPlayingTTS] = useState(false);
+  const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
   const { toast } = useToast();
+
+  const playText = async () => {
+    if (!textInput.trim()) {
+      toast({
+        title: "No Text",
+        description: "Please enter text to play.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (isPlayingTTS && currentAudio) {
+      currentAudio.pause();
+      setCurrentAudio(null);
+      setIsPlayingTTS(false);
+      return;
+    }
+
+    try {
+      setIsPlayingTTS(true);
+      const audioUrl = await speakWithElevenLabs(textInput);
+      const audio = new Audio(audioUrl);
+      setCurrentAudio(audio);
+
+      audio.onended = () => {
+        setIsPlayingTTS(false);
+        setCurrentAudio(null);
+      };
+
+      audio.onerror = () => {
+        setIsPlayingTTS(false);
+        setCurrentAudio(null);
+        toast({
+          title: "Playback Error",
+          description: "Failed to play audio. Please try again.",
+          variant: "destructive",
+        });
+      };
+
+      await audio.play();
+    } catch (error) {
+      setIsPlayingTTS(false);
+      setCurrentAudio(null);
+      toast({
+        title: "TTS Error",
+        description: "Failed to convert text to speech. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const processText = async () => {
     if (!textInput.trim()) {
@@ -99,22 +151,43 @@ export default function EncounterText() {
               </span>
             </div>
 
-            <Button
-              onClick={processText}
-              disabled={isProcessing || !textInput.trim()}
-              className="w-full"
-              size="lg"
-              data-testid="button-generate-soap"
-            >
-              {isProcessing ? (
-                <>
-                  <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                  Generating SOAP Note...
-                </>
-              ) : (
-                'Generate SOAP Note'
-              )}
-            </Button>
+            <div className="flex gap-3">
+              <Button
+                onClick={playText}
+                variant="outline"
+                disabled={!textInput.trim() || isProcessing}
+                className="flex items-center gap-2"
+                size="lg"
+              >
+                {isPlayingTTS ? (
+                  <>
+                    <Square className="h-4 w-4" />
+                    Stop
+                  </>
+                ) : (
+                  <>
+                    <Play className="h-4 w-4" />
+                    Play Text
+                  </>
+                )}
+              </Button>
+              <Button
+                onClick={processText}
+                disabled={isProcessing || !textInput.trim()}
+                className="flex-1"
+                size="lg"
+                data-testid="button-generate-soap"
+              >
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                    Generating SOAP Note...
+                  </>
+                ) : (
+                  'Generate SOAP Note'
+                )}
+              </Button>
+            </div>
           </CardContent>
         </Card>
 

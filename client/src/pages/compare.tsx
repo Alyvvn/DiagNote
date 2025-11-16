@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { ArrowLeft, Sparkles, User, Check } from "lucide-react";
+import { ArrowLeft, Sparkles, User, Check, Play, Square } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { db } from "@/lib/db";
-import { generateFlashcardsFromCase } from "@/lib/ai-services";
+import { generateFlashcardsFromCase, speakWithElevenLabs } from "@/lib/ai-services";
 import { extractSOAPSections, highlightDifferences } from "@/lib/diff-utils";
 
 export default function Compare() {
@@ -17,6 +17,8 @@ export default function Compare() {
   const [clinicianDiagnosis, setClinicianDiagnosis] = useState("");
   const [clinicianPlan, setClinicianPlan] = useState("");
   const [isGeneratingFlashcards, setIsGeneratingFlashcards] = useState(false);
+  const [isPlayingTTS, setIsPlayingTTS] = useState(false);
+  const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -116,6 +118,51 @@ export default function Compare() {
     }
   };
 
+  const playAIDraft = async () => {
+    if (isPlayingTTS && currentAudio) {
+      // Stop current playback
+      currentAudio.pause();
+      currentAudio.currentTime = 0;
+      setIsPlayingTTS(false);
+      setCurrentAudio(null);
+      return;
+    }
+
+    try {
+      setIsPlayingTTS(true);
+      const audioUrl = await speakWithElevenLabs(aiDraft);
+      const audio = new Audio(audioUrl);
+      
+      audio.onended = () => {
+        setIsPlayingTTS(false);
+        setCurrentAudio(null);
+        URL.revokeObjectURL(audioUrl);
+      };
+      
+      audio.onerror = () => {
+        setIsPlayingTTS(false);
+        setCurrentAudio(null);
+        URL.revokeObjectURL(audioUrl);
+        toast({
+          title: "Playback Error",
+          description: "Failed to play AI draft audio.",
+          variant: "destructive",
+        });
+      };
+      
+      setCurrentAudio(audio);
+      await audio.play();
+    } catch (error: any) {
+      setIsPlayingTTS(false);
+      setCurrentAudio(null);
+      toast({
+        title: "TTS Error",
+        description: error.message || "Failed to generate speech.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen">
       <header className="glass border-b border-white/10 sticky top-0 z-50">
@@ -179,11 +226,32 @@ export default function Compare() {
 
           <Card data-testid="card-ai-draft">
             <CardHeader className="pb-4">
-              <div className="flex items-center gap-2 mb-1">
-                <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Sparkles className="h-4 w-4 text-primary" />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Sparkles className="h-4 w-4 text-primary" />
+                  </div>
+                  <CardTitle>AI-Generated SOAP Note</CardTitle>
                 </div>
-                <CardTitle>AI-Generated SOAP Note</CardTitle>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={playAIDraft}
+                  disabled={!aiDraft || isGeneratingFlashcards}
+                  className="flex items-center gap-2"
+                >
+                  {isPlayingTTS ? (
+                    <>
+                      <Square className="h-4 w-4" />
+                      Stop
+                    </>
+                  ) : (
+                    <>
+                      <Play className="h-4 w-4" />
+                      Play AI Draft
+                    </>
+                  )}
+                </Button>
               </div>
               <CardDescription>Structured clinical documentation with evidence-based recommendations</CardDescription>
             </CardHeader>

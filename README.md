@@ -22,6 +22,8 @@ A clinical documentation and learning platform for healthcare providers (doctors
 - **Voice Mode:** Simulated recording interface with waveform animation (ElevenLabs STT placeholder)
 - **Text Mode:** Direct text input for clinical encounters
 - **Flow:** Capture → AI Processing → Recall Checkpoint
+  
+  Note: Voice mode now uses live ElevenLabs Speech-to-Text via server proxy.
 
 ### 2. Active Recall Workflow
 - Clinicians must enter their diagnosis/plan BEFORE seeing AI suggestions
@@ -62,10 +64,114 @@ A clinical documentation and learning platform for healthcare providers (doctors
 - No backend database (demo mode with local storage)
 - Seed data automatically loaded on first visit
 
-### AI Services (Placeholder Implementation)
-- **Azure OpenAI** - SOAP note generation (mocked responses)
-- **ElevenLabs** - Speech-to-text (mocked responses)
-- Ready for user to connect real API keys later
+### AI Services
+- **Azure OpenAI** – SOAP note generation (still mocked; real integration pending)
+- **ElevenLabs** – Speech-to-text now implemented via server proxy (`/api/stt/transcribe`). Client records `audio/webm` and uploads multipart form-data. Server forwards to ElevenLabs using model `scribe_v1`.
+
+#### Speech-to-Text Integration (Phase 1)
+| Aspect | Implementation |
+|--------|----------------|
+| Endpoint | `POST /api/stt/transcribe` (multipart `file`) |
+| Model | `scribe_v1` (override via `ELEVENLABS_MODEL_ID`) |
+| Auth | Server-side `ELEVENLABS_API_KEY` only (never exposed to client) |
+| Logging | Disabled (`enable_logging=false`) to reduce retention |
+| Rate Limit | 200 requests / hour / IP (override `STT_RATE_LIMIT_MAX`) |
+| File Types | `audio/webm`, `audio/wav`, `audio/mpeg`, `audio/ogg` |
+| Size Limit | 50 MB (typical encounter <5 MB) |
+| Error Codes | `CONFIG`, `VALIDATION`, `RATE_LIMIT`, `UPSTREAM`, `UNKNOWN` |
+| Mock Mode | Set `USE_MOCK_STT=1` when no key (deterministic transcript) |
+
+#### Required Environment Variables (.env)
+```
+ELEVENLABS_API_KEY=your_key_here
+ELEVENLABS_MODEL_ID=scribe_v1            # optional override
+ELEVENLABS_STT_URL=https://api.elevenlabs.io/v1/speech-to-text  # optional
+STT_RATE_LIMIT_MAX=200                   # optional per-IP hourly limit
+USE_MOCK_STT=0                           # set to 1 ONLY for local dev without key
+ELEVENLABS_VOICE_ID=                     # optional for TTS; if omitted we auto-pick first available
+ELEVENLABS_TTS_MODEL_ID=eleven_multilingual_v2  # default TTS model
+```
+
+If `ELEVENLABS_API_KEY` is missing and `USE_MOCK_STT` is not `1`, the server returns `{ code: "CONFIG" }` and the UI shows a configuration toast.
+
+#### Future (Phase 2)
+Client-side AES-GCM encryption + RSA key wrapping (already scaffolded) and realtime streaming (`/api/stt/realtime`).
+
+#### Text-to-Speech (TTS)
+- Endpoint: `POST /api/tts/speak` (JSON: `{ text, voice_id?, model_id? }`) → returns `audio/mpeg`.
+- Voices: `GET /api/tts/voices` to list available voices with your key.
+- Defaults: Uses `ELEVENLABS_TTS_MODEL_ID` (default `eleven_multilingual_v2`). If `voice_id` not provided and `ELEVENLABS_VOICE_ID` unset, the server auto-selects the first available voice.
+
+## Workflow Overview
+
+- Voice Encounter (STT):
+  - Record in `EncounterVoice` → upload audio (`audio/webm`) to `/api/stt/transcribe`.
+  - Server forwards to ElevenLabs STT (`scribe_v1`) and returns `transcript`.
+  - UI stores values in `sessionStorage`:
+    - `encounterTranscript` (text)
+    - `encounterAIDraft` (mocked SOAP draft for now)
+    - `encounterMode` = `voice`
+  - Navigate to Recall Checkpoint (requires clinician diagnosis/plan before reveal).
+
+- Text Encounter:
+  - Type/paste text in `EncounterText` → mocked SOAP draft.
+  - Same `sessionStorage` keys as above; then Recall Checkpoint.
+
+- Compare & Save:
+  - `Compare` page shows clinician vs AI draft.
+  - Save options:
+    - Save Case Only → writes to IndexedDB (`db.caseNotes`).
+    - Save & Generate Flashcards → writes case and auto-generates flashcards (`db.flashcards`).
+
+- Past Cases & Flashcards:
+  - `Cases` lists saved case notes from IndexedDB.
+  - `Flashcards` schedules via SM‑2.
+
+Data Persistence
+- Local only via Dexie (IndexedDB): `client/src/lib/db.ts`.
+- Case Note shape: `{ id, transcript, aiDraft, clinicianDiagnosis, clinicianPlan, createdAt }`.
+- No server database in this MVP.
+
+## Testing & QA
+
+Prereqs
+- Create `.env` with at least `ELEVENLABS_API_KEY`. The server auto-loads `.env` via dotenv.
+- Optional: set `ELEVENLABS_VOICE_ID` for TTS or rely on auto-pick.
+
+Run Dev
+```
+npm run dev
+```
+
+Manual Tests
+- Voice → Transcript:
+  - Navigate to Voice Encounter, record 5–10s, Generate SOAP Note.
+  - Expect live transcript; SOAP remains mocked.
+  - On missing key, UI shows configuration error (code `CONFIG`).
+
+- Text Encounter:
+  - Paste sample text, Generate SOAP Note → proceed to Recall Checkpoint.
+
+- Recall Checkpoint:
+  - Enter diagnosis and plan; click Reveal → navigates to Compare.
+
+- Compare & Save:
+  - Click Save Case Only → appears in Cases.
+  - Click Save & Generate Flashcards → appears in Flashcards.
+
+- TTS Quick Check:
+  - Open devtools console:
+    ```js
+    import { speakWithElevenLabs } from '/src/lib/ai-services';
+    const url = await speakWithElevenLabs('Hello from DiagNote.');
+    new Audio(url).play();
+    ```
+
+API Endpoints (Server)
+- `POST /api/stt/transcribe` → { transcript, words? }
+- `POST /api/tts/speak` → audio/mpeg
+- `GET /api/tts/voices` → list voices
+- Error codes: `CONFIG`, `VALIDATION`, `RATE_LIMIT`, `UPSTREAM`, `UNKNOWN`
 
 ## Data Models
 

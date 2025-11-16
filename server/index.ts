@@ -1,6 +1,9 @@
+import 'dotenv/config';
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import fs from "fs";
+import path from "path";
 
 const app = express();
 
@@ -57,13 +60,16 @@ app.use((req, res, next) => {
     throw err;
   });
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
-  if (app.get("env") === "development") {
-    await setupVite(app, server);
-  } else {
+  // Use development mode when running from source, production when running from dist
+  const currentFile = new URL(import.meta.url).pathname;
+  const isBuiltVersion = currentFile.includes('/dist/') || currentFile.includes('\\dist\\');
+  
+  if (isBuiltVersion) {
+    console.log("Production mode: serving static files");
     serveStatic(app);
+  } else {
+    console.log("Development mode: using Vite middleware");
+    await setupVite(app, server);
   }
 
   // ALWAYS serve the app on the port specified in the environment variable PORT

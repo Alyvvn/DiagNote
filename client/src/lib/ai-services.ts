@@ -1,11 +1,21 @@
 // Placeholder functions for ElevenLabs Speech-to-Text and Azure OpenAI
 
 export async function transcribeWithElevenLabs(audioBlob: Blob): Promise<string> {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 1500));
-  
-  // Mock transcription response
-  return `Patient is a 45-year-old male presenting with chief complaint of chest pain for the past 3 days. Pain is described as sharp, located in the left chest area, worse with deep breathing and movement. Denies radiation to arm or jaw. No associated shortness of breath, nausea, or diaphoresis. Patient has a history of hypertension, currently on lisinopril 10mg daily. No recent trauma or injury. Pain started gradually and has been constant since onset. Patient rates pain as 6 out of 10 at rest, 8 out of 10 with movement.`;
+  const form = new FormData();
+  form.append("file", audioBlob, "recording.webm");
+  // Optionally append language_code/model_id in future
+  const res = await fetch("/api/stt/transcribe", {
+    method: "POST",
+    body: form,
+  });
+  if (!res.ok) {
+    const errorPayload = await res.json().catch(() => ({ message: res.statusText }));
+    const err: any = new Error(errorPayload.message || "Transcription failed");
+    if (errorPayload.code) err.code = errorPayload.code;
+    throw err;
+  }
+  const data = await res.json();
+  return data.transcript || "";
 }
 
 export async function generateSOAPwithAzure(transcript: string): Promise<string> {
@@ -72,4 +82,49 @@ export async function generateFlashcardsFromCase(
       answer: "NSAIDs (e.g., ibuprofen 600mg TID with food) for pain and anti-inflammatory effect, rest, avoid strenuous activities. If NSAIDs contraindicated, acetaminophen can be used for pain relief though it lacks anti-inflammatory properties."
     }
   ];
+}
+
+// Simple TTS helper: returns an object URL that can be used to play audio
+export async function speakWithElevenLabs(text: string, opts?: { voiceId?: string; modelId?: string }): Promise<string> {
+  const res = await fetch("/api/tts/speak", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text, voice_id: opts?.voiceId, model_id: opts?.modelId }),
+  });
+  if (!res.ok) {
+    const payload = await res.json().catch(() => ({ message: res.statusText }));
+    const e: any = new Error(payload.message || "TTS failed");
+    e.code = payload.code;
+    throw e;
+  }
+  const blob = await res.blob();
+  return URL.createObjectURL(blob);
+}
+
+// Streaming TTS helper: returns audio chunks for immediate sequential playback
+export async function speakWithElevenLabsStreaming(text: string): Promise<{ chunks: Array<{ index: number; audio: string; text: string }> }> {
+  const response = await fetch('/api/tts/stream', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ text }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`TTS streaming failed: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+export async function listElevenLabsVoices(): Promise<any> {
+  const res = await fetch("/api/tts/voices");
+  if (!res.ok) {
+    const payload = await res.json().catch(() => ({ message: res.statusText }));
+    const e: any = new Error(payload.message || "Failed to list voices");
+    e.code = payload.code;
+    throw e;
+  }
+  return res.json();
 }
