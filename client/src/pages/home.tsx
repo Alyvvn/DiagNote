@@ -17,7 +17,7 @@ export default function Home() {
   });
 
   const { data: dueFlashcards = 0, isLoading: isLoadingFlashcards } = useQuery({
-    queryKey: ["/api/flashcards/due"],
+    queryKey: ["/api/flashcards/due-count"],
     queryFn: async () => {
       const now = Date.now();
       const cards = await db.flashcards.where('nextReview').below(now).count();
@@ -27,7 +27,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen">
-      <header className="glass border-b border-white/10 sticky top-0 z-50">
+      <header className="glass glass-header border-b sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-chart-2 flex items-center justify-center primary-glow">

@@ -16,10 +16,12 @@ export default function Flashcards() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [studyComplete, setStudyComplete] = useState(false);
+  const [practiceMode, setPracticeMode] = useState(false);
+  const [sessionCards, setSessionCards] = useState<Pick<Flashcard, 'id' | 'question' | 'answer'>[]>([]);
   const { toast } = useToast();
 
   const { data: dueCards = [], isLoading } = useQuery<Flashcard[]>({
-    queryKey: ['/api/flashcards/due'],
+    queryKey: ['/api/flashcards/due-list'],
     queryFn: async () => {
       const now = Date.now();
       const cards = await db.flashcards.where('nextReview').below(now).toArray();
@@ -55,41 +57,65 @@ export default function Flashcards() {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/flashcards/due'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/flashcards/count'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/flashcards/due-list'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/flashcards/due-count'] });
     },
   });
 
   const handleAnswer = async (quality: 'again' | 'good' | 'easy') => {
-    const currentCard = dueCards[currentIndex];
-    if (!currentCard.id) return;
+    const activeCards = practiceMode ? sessionCards : dueCards;
+    const currentCard = activeCards[currentIndex];
+    if (!currentCard?.id) return;
 
-    await updateCardMutation.mutateAsync({ id: currentCard.id, quality });
+    if (!practiceMode) {
+      await updateCardMutation.mutateAsync({ id: currentCard.id, quality });
+    }
 
     setIsFlipped(false);
-    
-    if (currentIndex < dueCards.length - 1) {
+
+    if (currentIndex < activeCards.length - 1) {
       setCurrentIndex(currentIndex + 1);
     } else {
       setStudyComplete(true);
       toast({
-        title: "Study Session Complete!",
-        description: `You reviewed ${dueCards.length} flashcard${dueCards.length !== 1 ? 's' : ''}.`,
+        title: practiceMode ? "Practice Session Complete!" : "Study Session Complete!",
+        description: `You reviewed ${activeCards.length} flashcard${activeCards.length !== 1 ? 's' : ''}.`,
       });
     }
   };
+
+  // Capture a snapshot of the current due cards for potential replay.
+  useEffect(() => {
+    if (!practiceMode && sessionCards.length === 0 && dueCards.length > 0) {
+      setSessionCards(dueCards.map(c => ({ id: c.id, question: c.question, answer: c.answer })));
+    }
+  }, [dueCards, practiceMode, sessionCards.length]);
 
   const resetSession = () => {
     setCurrentIndex(0);
     setIsFlipped(false);
     setStudyComplete(false);
-    queryClient.invalidateQueries({ queryKey: ['/api/flashcards/due'] });
+    setPracticeMode(false);
+    // For a fresh study session, refetch due cards
+    queryClient.invalidateQueries({ queryKey: ['/api/flashcards/due-list'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/flashcards/due-count'] });
+  };
+
+  const replaySession = () => {
+    if (sessionCards.length === 0) {
+      // If for some reason we have no snapshot, fallback to current due cards
+      setSessionCards(dueCards.map(c => ({ id: c.id, question: c.question, answer: c.answer })));
+    }
+    setCurrentIndex(0);
+    setIsFlipped(false);
+    setStudyComplete(false);
+    setPracticeMode(true);
   };
 
   if (isLoading) {
     return (
       <div className="min-h-screen">
-        <header className="glass border-b border-white/10 sticky top-0 z-50">
+        <header className="glass glass-header border-b sticky top-0 z-50">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <Button variant="ghost" size="sm" disabled>
               <ArrowLeft className="h-4 w-4 mr-2" />
@@ -111,10 +137,12 @@ export default function Flashcards() {
     );
   }
 
-  if (dueCards.length === 0 || studyComplete) {
+  const activeCards = practiceMode ? sessionCards : dueCards;
+
+  if (activeCards.length === 0 || studyComplete) {
     return (
       <div className="min-h-screen">
-        <header className="glass border-b border-white/10 sticky top-0 z-50">
+        <header className="glass glass-header border-b sticky top-0 z-50">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <Button
               variant="ghost"
@@ -135,11 +163,13 @@ export default function Flashcards() {
             <Brain className="h-8 w-8 text-primary" />
           </div>
           <h1 className="text-3xl font-semibold text-foreground mb-3">
-            {studyComplete ? "Great Work!" : "No Cards Due"}
+            {studyComplete ? (practiceMode ? "Practice Complete!" : "Great Work!") : "No Cards Due"}
           </h1>
           <p className="text-muted-foreground mb-8 leading-relaxed">
             {studyComplete
-              ? `You've completed today's study session. Check back later for more cards to review.`
+              ? (practiceMode
+                  ? `You replayed your last set. Want another round?`
+                  : `You've completed today's study session. Check back later for more cards to review.`)
               : "You're all caught up! Generate new cases and flashcards to continue learning."}
           </p>
           <div className="flex gap-3 justify-center flex-wrap">
@@ -147,7 +177,7 @@ export default function Flashcards() {
               Return Home
             </Button>
             {studyComplete && (
-              <Button variant="outline" onClick={resetSession} data-testid="button-study-again">
+              <Button variant="outline" onClick={replaySession} data-testid="button-study-again">
                 <RotateCcw className="h-4 w-4 mr-2" />
                 Study Again
               </Button>
@@ -158,12 +188,22 @@ export default function Flashcards() {
     );
   }
 
-  const currentCard = dueCards[currentIndex];
-  const progress = ((currentIndex + 1) / dueCards.length) * 100;
+  const currentCard = activeCards[currentIndex];
+  const questionText = typeof currentCard?.question === 'string'
+    ? currentCard.question
+    : (() => {
+        try { return JSON.stringify(currentCard?.question ?? ""); } catch { return String(currentCard?.question ?? ""); }
+      })();
+  const answerText = typeof currentCard?.answer === 'string'
+    ? currentCard.answer
+    : (() => {
+        try { return JSON.stringify(currentCard?.answer ?? ""); } catch { return String(currentCard?.answer ?? ""); }
+      })();
+  const progress = activeCards.length > 0 ? ((currentIndex + 1) / activeCards.length) * 100 : 0;
 
   return (
     <div className="min-h-screen">
-      <header className="glass border-b border-white/10 sticky top-0 z-50">
+      <header className="glass glass-header border-b sticky top-0 z-50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <Button
             variant="ghost"
@@ -177,8 +217,11 @@ export default function Flashcards() {
           </Button>
           <div className="flex items-center gap-3">
             <Badge variant="secondary" className="glass border-white/20 font-semibold" data-testid="badge-progress">
-              {currentIndex + 1} of {dueCards.length}
+              {currentIndex + 1} of {activeCards.length}
             </Badge>
+            {practiceMode && (
+              <Badge variant="outline" className="font-medium">Practice</Badge>
+            )}
             <ThemeToggle />
           </div>
         </div>
@@ -207,7 +250,7 @@ export default function Flashcards() {
                   Question
                 </Badge>
                 <p className="text-xl text-foreground text-center leading-relaxed mb-8" data-testid="text-question">
-                  {currentCard.question}
+                  {questionText}
                 </p>
                 <p className="text-sm text-muted-foreground">Click to reveal answer</p>
               </div>
@@ -217,7 +260,7 @@ export default function Flashcards() {
                   Answer
                 </Badge>
                 <p className="text-base text-foreground leading-relaxed flex-1" data-testid="text-answer">
-                  {currentCard.answer}
+                  {answerText}
                 </p>
               </div>
             )}

@@ -60,28 +60,36 @@ export async function generateFlashcardsFromCase(
   clinicianDiagnosis: string,
   clinicianPlan: string
 ): Promise<Array<{ question: string; answer: string }>> {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  
-  // Generate flashcards based on the case
-  return [
-    {
-      question: "A 45-year-old male presents with 3 days of sharp left chest pain, worse with breathing and movement. Pain is reproducible on palpation of costochondral junction. Vital signs normal. What is the most likely diagnosis?",
-      answer: "Costochondritis - an inflammation of the cartilage connecting ribs to the sternum. Key features: reproducible chest wall tenderness, pleuritic pain pattern, normal vitals, no cardiac or pulmonary findings."
-    },
-    {
-      question: "What initial workup is essential for a patient presenting with chest pain to rule out life-threatening causes?",
-      answer: "ECG and serial troponins (at least 2 sets, 3 hours apart) to rule out acute coronary syndrome. Consider chest X-ray if concerned about pneumothorax or pneumonia. Always assess vital signs and perform thorough cardiovascular and respiratory exam."
-    },
-    {
-      question: "What are appropriate return precautions for a patient diagnosed with costochondritis?",
-      answer: "Return immediately for: worsening or changing chest pain, new shortness of breath, syncope, palpitations, nausea/vomiting, or any other concerning symptoms. Follow up in 48-72 hours if symptoms persist despite treatment."
-    },
-    {
-      question: "What is first-line treatment for costochondritis?",
-      answer: "NSAIDs (e.g., ibuprofen 600mg TID with food) for pain and anti-inflammatory effect, rest, avoid strenuous activities. If NSAIDs contraindicated, acetaminophen can be used for pain relief though it lacks anti-inflammatory properties."
-    }
-  ];
+  const res = await fetch("/api/ai/generate-flashcards", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      transcript,
+      aiDraft,
+      clinicianDiagnosis,
+      clinicianPlan,
+    }),
+  });
+
+  if (!res.ok) {
+    const errorPayload = await res.json().catch(() => ({ message: res.statusText }));
+    const err: any = new Error(errorPayload.message || "Flashcard generation failed");
+    if (errorPayload.code) err.code = errorPayload.code;
+    throw err;
+  }
+
+  const data = await res.json();
+  const raw = Array.isArray(data?.flashcards) ? data.flashcards : [];
+  // Sanitize and validate
+  const cleaned = raw
+    .filter((c: any) => c && typeof c === "object")
+    .map((c: any) => ({
+      question: String(c.question ?? "").trim(),
+      answer: String(c.answer ?? "").trim(),
+    }))
+    .filter((c: any) => c.question.length > 0 && c.answer.length > 0);
+
+  return cleaned;
 }
 
 // Simple TTS helper: returns an object URL that can be used to play audio

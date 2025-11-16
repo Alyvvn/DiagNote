@@ -74,6 +74,10 @@
   --font-mono: "JetBrains Mono", "SF Mono", Monaco, monospace;
   --radius: 0.75rem;
   
+  /* Header glass alpha and border for light mode */
+  --header-alpha: rgba(255, 255, 255, 0.58);
+  --header-border: rgba(0, 0, 0, 0.10);
+  
   /* Enhanced shadows for depth */
   --shadow-2xs: 0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow-xs: 0 2px 4px rgba(0, 0, 0, 0.04);
@@ -192,6 +196,10 @@
   --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.7), 0 8px 16px rgba(0, 0, 0, 0.5);
   --shadow-2xl: 0 32px 64px rgba(0, 0, 0, 0.8);
 
+  /* Header glass alpha and border for dark mode */
+  --header-alpha: rgba(15, 23, 42, 0.70);
+  --header-border: rgba(255, 255, 255, 0.10);
+
 /* Fallback for older browsers */
   --sidebar-primary-border: hsl(var(--sidebar-primary));
   --sidebar-primary-border: hsl(from hsl(var(--sidebar-primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
@@ -243,6 +251,13 @@
     backdrop-filter: blur(16px) saturate(180%);
     -webkit-backdrop-filter: blur(16px) saturate(180%);
     border: 1px solid rgba(255, 255, 255, 0.18);
+  }
+  
+  /* Header-specific glass so light mode matches dark transparency */
+  .glass-header {
+    background: var(--header-alpha);
+    border-color: var(--header-border);
+    transition: background-color 200ms ease, border-color 200ms ease;
   }
   
   .glass-popover {

@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { generateKeyPairSync, privateDecrypt } from "crypto";
 import multer from "multer";
 import rateLimit from "express-rate-limit";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // Multipart upload (50MB limit) – voice encounter recordings are short (<5MB typical)
 const upload = multer({ limits: { fileSize: 50 * 1024 * 1024 } });
@@ -14,6 +15,15 @@ const sttLimiter = rateLimit({
   max: Number(process.env.STT_RATE_LIMIT_MAX || 200),
   standardHeaders: true,
   legacyHeaders: false,
+});
+
+// AI generation rate limiting (50 requests per hour per IP)
+const aiLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 50,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { code: "RATE_LIMIT", message: "Too many AI requests, please try again later" },
 });
 
 // In-memory RSA keypair for optional client-side encryption (demo/dev only)
@@ -172,6 +182,139 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // AI-powered flashcard generation using Google Gemini 2.5 Flash
+  app.post("/api/ai/generate-flashcards", aiLimiter, express.json({ limit: "1mb" }), async (req: Request, res: Response) => {
+    try {
+      const { transcript, aiDraft, clinicianDiagnosis, clinicianPlan } = req.body as {
+        transcript?: string;
+        aiDraft?: string;
+        clinicianDiagnosis?: string;
+        clinicianPlan?: string;
+      };
+
+      // Validation
+      if (!transcript || !aiDraft || !clinicianDiagnosis || !clinicianPlan) {
+        return res.status(400).json({
+          code: "VALIDATION",
+          message: "Missing required fields: transcript, aiDraft, clinicianDiagnosis, clinicianPlan",
+        });
+      }
+
+      const apiKey = process.env.GOOGLE_API_KEY;
+      
+      // Check for mock mode
+      if (!apiKey) {
+        if (process.env.USE_MOCK_AI === "1") {
+          // Return mock flashcards
+          const mockFlashcards = [
+            {
+              question: "What is the primary diagnosis based on the clinical presentation?",
+              answer: `Based on the case, the primary diagnosis is: ${clinicianDiagnosis.substring(0, 200)}`,
+            },
+            {
+              question: "What are the key clinical findings that support this diagnosis?",
+              answer: "Review the objective findings and correlate them with the patient's subjective complaints to understand the diagnostic reasoning.",
+            },
+            {
+              question: "What is the recommended treatment plan for this condition?",
+              answer: `Treatment approach: ${clinicianPlan.substring(0, 200)}`,
+            },
+          ];
+          return res.json({ flashcards: mockFlashcards, provider: "mock", mocked: true });
+        }
+        return res.status(500).json({
+          code: "CONFIG",
+          message: "Missing GOOGLE_API_KEY. Set it in server .env or enable USE_MOCK_AI=1",
+        });
+      }
+
+      // Initialize Gemini
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({
+        model: process.env.GEMINI_MODEL || "gemini-2.0-flash-exp",
+      });
+
+      // Construct prompt for medical flashcard generation
+      const prompt = `You are a medical education expert creating flashcards for clinical learning. Generate 3-5 high-quality flashcards from this clinical case that will help the clinician retain key learning points.
+
+CASE TRANSCRIPT:
+${transcript}
+
+AI-GENERATED SOAP NOTE:
+${aiDraft}
+
+CLINICIAN'S ASSESSMENT:
+Diagnosis: ${clinicianDiagnosis}
+Treatment Plan: ${clinicianPlan}
+
+Generate flashcards that:
+1. Test differential diagnosis reasoning and clinical decision-making
+2. Reinforce key clinical findings and their significance
+3. Cover evidence-based treatment and management decisions
+4. Include important follow-up, return precautions, or red flags
+5. Focus on teaching points where the clinician can learn from this case
+
+Requirements:
+- Each flashcard should be clear, specific, and clinically relevant
+- Questions should prompt active recall and critical thinking
+- Answers should be concise but complete (2-4 sentences)
+- Avoid overly simple or trivial questions
+- Use proper medical terminology
+
+Return ONLY a valid JSON array with this exact structure (no markdown, no code blocks):
+[{"question": "question text here", "answer": "answer text here"}]`;
+
+      const start = Date.now();
+      const result = await model.generateContent(prompt);
+      const response = result.response;
+      const text = response.text();
+      const durationMs = Date.now() - start;
+
+      // Parse JSON response
+      let flashcards;
+      try {
+        // Remove markdown code blocks if present
+        const cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+        flashcards = JSON.parse(cleaned);
+        
+        if (!Array.isArray(flashcards)) {
+          throw new Error("Response is not an array");
+        }
+        
+        // Validate structure
+        flashcards.forEach((card: any, idx: number) => {
+          if (!card.question || !card.answer) {
+            throw new Error(`Flashcard ${idx} missing question or answer`);
+          }
+        });
+      } catch (parseErr: any) {
+        console.error("Gemini JSON parse error:", parseErr.message, "Raw:", text.substring(0, 500));
+        return res.status(502).json({
+          code: "UPSTREAM",
+          message: "Failed to parse AI response. Please try again.",
+        });
+      }
+
+      console.log(JSON.stringify({
+        event: "flashcard_generation",
+        provider: "gemini",
+        model: process.env.GEMINI_MODEL || "gemini-2.0-flash-exp",
+        count: flashcards.length,
+        durationMs,
+      }));
+
+      res.json({ flashcards, provider: "gemini" });
+    } catch (err: any) {
+      console.error("Flashcard generation error:", err);
+      const status = err?.status || 500;
+      const code = err?.code || (status === 429 ? "RATE_LIMIT" : "UNKNOWN");
+      res.status(status).json({
+        code,
+        message: err?.message || "Flashcard generation failed",
+      });
+    }
+  });
+
   // Streaming Text-to-Speech endpoint: returns chunked audio for immediate playback
   app.post("/api/tts/stream", express.json({ limit: "1mb" }), async (req: Request, res: Response) => {
     try {
@@ -210,6 +353,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Process all chunks and return array of audio URLs
       const audioChunks = [];
+      const errors: string[] = [];
       
       for (let i = 0; i < chunks.length; i++) {
         const chunk = chunks[i];
@@ -226,27 +370,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         };
         
-        const r = await fetch(ttsUrl, {
-          method: "POST",
-          headers: {
-            "xi-api-key": apiKey,
-            "Content-Type": "application/json",
-            "Accept": "audio/mpeg",
-          },
-          body: JSON.stringify(body),
-        });
+        try {
+          const r = await fetch(ttsUrl, {
+            method: "POST",
+            headers: {
+              "xi-api-key": apiKey,
+              "Content-Type": "application/json",
+              "Accept": "audio/mpeg",
+            },
+            body: JSON.stringify(body),
+          });
+          
+          if (!r.ok) {
+            const errorText = await r.text().catch(() => r.statusText);
+            console.error(`TTS chunk ${i} failed (${r.status}):`, errorText.substring(0, 200));
+            errors.push(`Chunk ${i}: ${r.status} ${r.statusText}`);
+            continue;
+          }
+          
+          const audio = Buffer.from(await r.arrayBuffer());
+          const audioBase64 = audio.toString('base64');
+          audioChunks.push({
+            index: i,
+            audio: `data:audio/mpeg;base64,${audioBase64}`,
+            text: chunk
+          });
+        } catch (chunkErr: any) {
+          console.error(`TTS chunk ${i} exception:`, chunkErr.message);
+          errors.push(`Chunk ${i}: ${chunkErr.message}`);
+        }
+      }
+      
+      // Return error if no chunks were successfully generated
+      if (audioChunks.length === 0) {
+        console.error("TTS streaming failed - no chunks generated. Errors:", errors);
         
-        if (!r.ok) {
-          console.error(`TTS chunk ${i} failed:`, r.status);
-          continue;
+        // Check if it's a quota issue
+        const firstError = errors[0] || "";
+        let errorMessage = "Failed to generate any audio chunks. Check voice ID and API key.";
+        
+        if (firstError.includes("401")) {
+          errorMessage = "ElevenLabs API authentication failed. Your API key may have exhausted its quota or credits. Check elevenlabs.io for your account status.";
         }
         
-        const audio = Buffer.from(await r.arrayBuffer());
-        const audioBase64 = audio.toString('base64');
-        audioChunks.push({
-          index: i,
-          audio: `data:audio/mpeg;base64,${audioBase64}`,
-          text: chunk
+        return res.status(502).json({ 
+          code: "UPSTREAM", 
+          message: errorMessage,
+          details: errors.slice(0, 3) // Return first 3 errors for debugging
         });
       }
       

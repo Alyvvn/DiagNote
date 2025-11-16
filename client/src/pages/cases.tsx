@@ -148,9 +148,19 @@ export default function Cases() {
     } catch (error: any) {
       setIsPlayingTTS(null);
       setCurrentAudio(null);
+      
+      let title = "TTS Error";
+      let description = error.message || "Failed to generate speech.";
+      
+      // Check for quota exceeded in error message
+      if (error.message?.includes("quota") || error.message?.includes("credits")) {
+        title = "TTS Quota Exceeded";
+        description = "ElevenLabs API credits exhausted. Add credits at elevenlabs.io to enable text-to-speech.";
+      }
+      
       toast({
-        title: "TTS Error",
-        description: error.message || "Failed to generate speech.",
+        title,
+        description,
         variant: "destructive",
       });
     }
@@ -159,7 +169,7 @@ export default function Cases() {
   if (selectedCase) {
     return (
       <div className="min-h-screen">
-        <header className="glass border-b border-white/10 sticky top-0 z-50">
+        <header className="glass glass-header border-b sticky top-0 z-50">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <Button
               variant="ghost"
@@ -282,7 +292,7 @@ export default function Cases() {
 
   return (
     <div className="min-h-screen">
-      <header className="glass border-b border-white/10 sticky top-0 z-50">
+      <header className="glass glass-header border-b sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <Button
             variant="ghost"
