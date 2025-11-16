@@ -1,5 +1,17 @@
-import { type User, type InsertUser } from "@shared/schema";
 import { randomUUID } from "crypto";
+
+// Local-only demo user types (not persisted)
+export interface User {
+  id: string;
+  username: string;
+  hashedPassword?: string;
+  createdAt: number;
+}
+
+export interface InsertUser {
+  username: string;
+  hashedPassword?: string;
+}
 
 // modify the interface with any CRUD methods
 // you might need
@@ -29,7 +41,7 @@ export class MemStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = randomUUID();
-    const user: User = { ...insertUser, id };
+    const user: User = { ...insertUser, id, createdAt: Date.now() };
     this.users.set(id, user);
     return user;
   }

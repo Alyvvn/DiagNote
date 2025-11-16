@@ -84,12 +84,21 @@ export default function EncounterVoice() {
       sessionStorage.setItem('encounterMode', 'voice');
       
       setLocation('/recall-checkpoint');
-    } catch (error) {
-      toast({
-        title: "Processing Error",
-        description: "Failed to process recording. Please try again.",
-        variant: "destructive",
-      });
+    } catch (error: any) {
+      const code = (error as any)?.code;
+      if (code === 'CONFIG') {
+        toast({
+          title: 'Configuration Required',
+          description: 'Speech-to-text not configured. Set ELEVENLABS_API_KEY on server.',
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Processing Error',
+          description: 'Failed to process recording. Please try again.',
+          variant: 'destructive',
+        });
+      }
     } finally {
       setIsProcessing(false);
     }
