@@ -38,10 +38,10 @@ export function extractSOAPSections(soapText: string): {
     plan: '',
   };
   
-  const sRegex = /S\s*\(Subjective\):?\s*(.*?)(?=\n\s*O\s*\(Objective\)|$)/is;
-  const oRegex = /O\s*\(Objective\):?\s*(.*?)(?=\n\s*A\s*\(Assessment\)|$)/is;
-  const aRegex = /A\s*\(Assessment\):?\s*(.*?)(?=\n\s*P\s*\(Plan\)|$)/is;
-  const pRegex = /P\s*\(Plan\):?\s*(.*?)(?=$|ICD-10|CPT)/is;
+  const sRegex = /S\s*\(Subjective\):?\s*([\s\S]*?)(?=\n\s*O\s*\(Objective\)|$)/i;
+  const oRegex = /O\s*\(Objective\):?\s*([\s\S]*?)(?=\n\s*A\s*\(Assessment\)|$)/i;
+  const aRegex = /A\s*\(Assessment\):?\s*([\s\S]*?)(?=\n\s*P\s*\(Plan\)|$)/i;
+  const pRegex = /P\s*\(Plan\):?\s*([\s\S]*?)(?=$|ICD-10|CPT)/i;
   
   const sMatch = soapText.match(sRegex);
   const oMatch = soapText.match(oRegex);

@@ -4,7 +4,7 @@
 A clinical documentation and learning platform for healthcare providers (doctors, therapists, residents) featuring voice/text encounter capture, AI-powered SOAP note generation, active recall workflows, and spaced repetition flashcards. Inspired by Vitruviana's polished medical aesthetic with a clean, professional interface.
 
 ## Project Status
-**Status:** MVP Complete - All core features implemented with local-only storage (demo mode)
+**Status:** Backend Integrated - Google Gemini for SOAP/flashcards; API + DB ready
 **Last Updated:** November 15, 2025
 
 ## Recent Changes (November 15, 2025)
@@ -15,6 +15,10 @@ A clinical documentation and learning platform for healthcare providers (doctors
 - ✅ Updated database version to v2 to force IndexedDB reset
 - ✅ Ensured easeFactor stored as decimal (2.5) for proper SRS calculations
 - ✅ Added comprehensive data-testid attributes across interactive elements
+ - ✅ Implemented backend API with Express + Drizzle + Neon
+ - ✅ Integrated Google Gemini for SOAP note and flashcard generation
+ - ✅ Added routes for cases, flashcards, and AI services
+ - ✅ Added setup docs: BACKEND_SETUP.md, MIGRATION_GUIDE.md, QUICK_START.md
 
 ## Core Features
 
@@ -58,14 +62,13 @@ A clinical documentation and learning platform for healthcare providers (doctors
 - **Lucide React** for icons
 
 ### Storage
-- **Dexie.js** (IndexedDB wrapper) for local-only persistence
-- No backend database (demo mode with local storage)
-- Seed data automatically loaded on first visit
+- PostgreSQL via Neon + Drizzle ORM (server)
+- Optional local Dexie (legacy/demo) pending migration
 
-### AI Services (Placeholder Implementation)
-- **Azure OpenAI** - SOAP note generation (mocked responses)
-- **ElevenLabs** - Speech-to-text (mocked responses)
-- Ready for user to connect real API keys later
+### AI Services
+- **Google Gemini 1.5 Flash** - SOAP note generation
+- **Google Gemini 1.5 Flash** - Flashcard generation
+- ElevenLabs STT endpoint scaffolded (501 Not Implemented)
 
 ## Data Models
 
@@ -138,15 +141,15 @@ interface Flashcard {
 
 ## Architecture Decisions
 
-### Local-Only Storage
-- **Why:** Demo mode, no HIPAA compliance needed
-- **Benefit:** Zero backend infrastructure, instant setup
-- **Trade-off:** Data not synced across devices
+### Backend API
+- **Why:** Enable sync across devices and real AI integration
+- **Benefit:** Persistent storage, shareable data, secure API keys
+- **Trade-off:** Requires environment setup and hosting
 
-### Placeholder AI Services
-- **Why:** Allow development/demo without API costs
-- **Implementation:** Realistic mocked responses based on input
-- **Future:** Easy to swap for real Azure OpenAI / ElevenLabs
+### Google Gemini AI
+- **Why:** Fast, affordable, strong structured output for clinical docs
+- **Implementation:** Server-side prompts for SOAP and flashcards
+- **Future:** Add safety filters, model selection, cost tracking
 
 ### Active Recall Pattern
 - **Why:** Evidence-based learning methodology
@@ -246,6 +249,6 @@ server/
 ## Project Goals
 1. ✅ Create polished clinical documentation tool
 2. ✅ Implement evidence-based learning workflows
-3. ✅ Build completely local-only demo version
-4. ⏳ Enable user to connect real API keys later
+3. ✅ Backend + AI integration (Gemini) completed
+4. ⏳ Migrate frontend storage from Dexie to API (see MIGRATION_GUIDE.md)
 5. ⏳ Comprehensive E2E testing of all workflows
