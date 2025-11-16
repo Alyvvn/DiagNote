@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { db, type CaseNote } from "@/lib/db";
+import { api, type CaseNoteDTO } from "@/lib/api";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -24,23 +24,19 @@ import {
 export default function Cases() {
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCase, setSelectedCase] = useState<CaseNote | null>(null);
+  const [selectedCase, setSelectedCase] = useState<CaseNoteDTO | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [caseToDelete, setCaseToDelete] = useState<number | null>(null);
+  const [caseToDelete, setCaseToDelete] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const { data: cases = [], isLoading } = useQuery<CaseNote[]>({
+  const { data: cases = [], isLoading } = useQuery<CaseNoteDTO[]>({
     queryKey: ['/api/cases'],
-    queryFn: async () => {
-      const allCases = await db.caseNotes.orderBy('createdAt').reverse().toArray();
-      return allCases;
-    },
+    queryFn: () => api.getCases(),
   });
 
   const deleteCaseMutation = useMutation({
-    mutationFn: async (id: number) => {
-      await db.flashcards.where('caseNoteId').equals(id).delete();
-      await db.caseNotes.delete(id);
+    mutationFn: async (id: string) => {
+      await api.deleteCase(id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/cases'] });
@@ -59,7 +55,7 @@ export default function Cases() {
     c.clinicianDiagnosis.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleDelete = (id: number) => {
+  const handleDelete = (id: string) => {
     setCaseToDelete(id);
     setDeleteDialogOpen(true);
   };
@@ -72,8 +68,8 @@ export default function Cases() {
     setCaseToDelete(null);
   };
 
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleDateString('en-US', {
+  const formatDate = (isoDate: string) => {
+    return new Date(isoDate).toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric',

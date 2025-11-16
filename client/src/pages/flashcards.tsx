@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { db, type Flashcard } from "@/lib/db";
+import { api, type FlashcardDTO } from "@/lib/api";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 
@@ -18,37 +18,34 @@ export default function Flashcards() {
   const [studyComplete, setStudyComplete] = useState(false);
   const { toast } = useToast();
 
-  const { data: dueCards = [], isLoading } = useQuery<Flashcard[]>({
+  const { data: dueCards = [], isLoading } = useQuery<FlashcardDTO[]>({
     queryKey: ['/api/flashcards/due'],
-    queryFn: async () => {
-      const now = Date.now();
-      const cards = await db.flashcards.where('nextReview').below(now).toArray();
-      return cards;
-    },
+    queryFn: () => api.getDueFlashcards(),
   });
 
   const updateCardMutation = useMutation({
-    mutationFn: async ({ id, quality }: { id: number; quality: 'again' | 'good' | 'easy' }) => {
-      const card = await db.flashcards.get(id);
+    mutationFn: async ({ id, quality }: { id: string; quality: 'again' | 'good' | 'easy' }) => {
+      const card = dueCards.find(c => c.id === id);
       if (!card) throw new Error('Card not found');
 
       let newInterval = card.interval;
       let newEaseFactor = card.easeFactor;
+      const currentEF = card.easeFactor / 100; // Convert to decimal
 
       if (quality === 'again') {
         newInterval = 1;
-        newEaseFactor = Math.max(1.3, card.easeFactor - 0.2);
+        newEaseFactor = Math.max(130, card.easeFactor - 20);
       } else if (quality === 'good') {
-        newInterval = Math.round(card.interval * card.easeFactor);
+        newInterval = Math.round(card.interval * currentEF);
         newEaseFactor = card.easeFactor;
       } else {
-        newInterval = Math.round(card.interval * card.easeFactor * 1.3);
-        newEaseFactor = Math.min(2.5, card.easeFactor + 0.1);
+        newInterval = Math.round(card.interval * currentEF * 1.3);
+        newEaseFactor = Math.min(250, card.easeFactor + 10);
       }
 
-      const nextReview = Date.now() + (newInterval * 24 * 60 * 60 * 1000);
+      const nextReview = new Date(Date.now() + (newInterval * 24 * 60 * 60 * 1000)).toISOString();
 
-      await db.flashcards.update(id, {
+      await api.updateFlashcard(id, {
         interval: newInterval,
         easeFactor: newEaseFactor,
         nextReview,

@@ -5,23 +5,19 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useQuery } from "@tanstack/react-query";
-import { db } from "@/lib/db";
+import { api } from "@/lib/api";
 
 export default function Home() {
   const { data: totalCases = 0, isLoading: isLoadingCases } = useQuery({
     queryKey: ["/api/cases/count"],
-    queryFn: async () => {
-      const count = await db.caseNotes.count();
-      return count;
-    },
+    queryFn: () => api.getCaseCount(),
   });
 
   const { data: dueFlashcards = 0, isLoading: isLoadingFlashcards } = useQuery({
     queryKey: ["/api/flashcards/due"],
     queryFn: async () => {
-      const now = Date.now();
-      const cards = await db.flashcards.where('nextReview').below(now).count();
-      return cards;
+      const cards = await api.getDueFlashcards();
+      return cards.length;
     },
   });
 

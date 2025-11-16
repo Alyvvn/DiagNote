@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { db } from "@/lib/db";
+import { api } from "@/lib/api";
 import { generateFlashcardsFromCase } from "@/lib/ai-services";
 import { extractSOAPSections, highlightDifferences } from "@/lib/diff-utils";
 
@@ -44,12 +44,11 @@ export default function Compare() {
   const generateFlashcards = async () => {
     setIsGeneratingFlashcards(true);
     try {
-      const caseId = await db.caseNotes.add({
+      const createdCase = await api.createCase({
         transcript,
         aiDraft,
         clinicianDiagnosis,
         clinicianPlan,
-        createdAt: Date.now(),
       });
 
       const flashcardData = await generateFlashcardsFromCase(
@@ -60,15 +59,15 @@ export default function Compare() {
       );
 
       const flashcards = flashcardData.map(card => ({
-        caseNoteId: caseId as number,
+        caseNoteId: createdCase.id,
         question: card.question,
         answer: card.answer,
-        nextReview: Date.now(),
+        nextReview: new Date().toISOString(),
         interval: 1,
-        easeFactor: 2.5,
+        easeFactor: 250,
       }));
 
-      await db.flashcards.bulkAdd(flashcards);
+      await api.createFlashcards(flashcards);
 
       sessionStorage.clear();
 
@@ -91,12 +90,11 @@ export default function Compare() {
 
   const saveWithoutFlashcards = async () => {
     try {
-      await db.caseNotes.add({
+      await api.createCase({
         transcript,
         aiDraft,
         clinicianDiagnosis,
         clinicianPlan,
-        createdAt: Date.now(),
       });
 
       sessionStorage.clear();
